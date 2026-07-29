@@ -1,0 +1,23 @@
+# 🛠️ Checklist Configuration (checklist.toml)
+
+[checklist]
+use_gitignore = true
+target_dirs = ["backend", "frontend/src", "scripts"]
+exclude_dirs = [".git", ".venv", "venv", "node_modules", "dist", "site", "__pycache__", "mongo-data"]
+exclude_files = ["vite.config.js"]
+
+[checklist.auto_fixers]
+py_imports = true
+vue_imports = true
+
+[checklist.auditors]
+language = true
+hardcoded = true
+docs = true
+
+[checklist.language]
+strict_english = true
+custom_allowed_words = ["gptw", "nps", "rut"]
+
+[checklist.hardcoded]
+allow_localhost = true
