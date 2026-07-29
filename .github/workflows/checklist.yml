@@ -1,0 +1,34 @@
+name: LLM Dev Checklist — Code Quality Audit
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  checklist-audit:
+    name: Run Checklist Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install LLM Dev Checklist
+        run: pip install git+https://github.com/Mitchell-Mirano/LLMDevChecklist.git
+
+      - name: Run Auto-Fixers (Dry Run)
+        run: checklist fix --dry-run -v
+
+      - name: Run Diagnostic Audit (JSON)
+        run: checklist audit --format json > audit-results.json
+
+      - name: Upload Audit Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: checklist-audit-results
+          path: audit-results.json

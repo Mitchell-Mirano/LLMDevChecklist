@@ -5,7 +5,7 @@
 
 from .gitignore import GitIgnoreFilter
 from .config import load_config, init_config_file
-from .py_imports import clean_py_imports
+from .py_imports import clean_py_imports, detect_inline_imports
 from .vue_imports import clean_vue_imports
 from .check_code_language import check_code_language
 from .check_hardcoded import check_hardcoded
@@ -65,6 +65,15 @@ def generate_llm_prompt(audit_results: dict) -> str:
             md.append(f"- [ ] Undocumented Frontend Module: [{name}](file://{path})")
         md.append("")
 
+    # 4. Inline Import Warnings
+    inline_imports = audit_results.get("inline_imports", [])
+    if inline_imports:
+        has_issues = True
+        md.append("### 📦 4. Inline Imports (PEP 8: move to top-level or confirm intentional)")
+        for imp in inline_imports:
+            md.append(f"- [ ] [{imp['file']}:L{imp['line_no']}](file://{imp['file']}#L{imp['line_no']}) - `{imp['import_statement']}` inside `{imp['scope']}`")
+        md.append("")
+
     if not has_issues:
         md.append("🎉 **No diagnostic issues found! Codebase is 100% clean and compliant.**")
 
@@ -76,6 +85,7 @@ __all__ = [
     "load_config",
     "init_config_file",
     "clean_py_imports",
+    "detect_inline_imports",
     "clean_vue_imports",
     "check_code_language",
     "check_hardcoded",

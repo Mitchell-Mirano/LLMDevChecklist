@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-dev-checklist"
-version = "1.0.0"
+version = "1.1.0"
 description = "Modular Code Quality Audit & Checklist Suite for AI/LLM-generated code, Python, and Vue.js Projects"
 readme = "README.md"
 authors = [
@@ -17,6 +17,7 @@ dependencies = [
 
 [project.scripts]
 checklist = "checklist.cli:main"
+llm-dev-checklist = "checklist.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["checklist"]

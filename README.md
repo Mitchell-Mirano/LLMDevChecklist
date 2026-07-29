@@ -6,18 +6,18 @@ A modular, lightweight Python library and CLI tool designed for auditing and cle
 
 ## 📥 Installation from GitHub
 
-You can install this package directly from GitHub using `pip` or `pipx`:
-
-### Using `pip`
-
 ```bash
-pip install git+https://github.com/mitchellmirano/LLMDevChecklist.git
+# Using pip
+pip install git+https://github.com/Mitchell-Mirano/LLMDevChecklist.git
+
+# Using pipx (global CLI tool)
+pipx install git+https://github.com/Mitchell-Mirano/LLMDevChecklist.git
 ```
 
-### Using `pipx` (Global CLI tool)
-
+After installation, both `checklist` and `llm-dev-checklist` commands are available:
 ```bash
-pipx install git+https://github.com/mitchellmirano/LLMDevChecklist.git
+checklist --help
+llm-dev-checklist --help  # Same tool, alternative name
 ```
 
 ---
@@ -25,28 +25,35 @@ pipx install git+https://github.com/mitchellmirano/LLMDevChecklist.git
 ## 🚀 Features
 
 - **TOML Configuration (`checklist.toml` / `pyproject.toml`)**: Flexible, per-project rules.
-- **`.gitignore` Parsing**: Automatically respects `.gitignore` rules and ignores configured build/environment directories (`node_modules`, `.venv`, `dist`, etc.).
-- **Python Import Cleaner (`clean_py_imports`)**: Consolidates duplicate top-level imports and purges unused references without breaking inline imports or `sys.path` logic.
-- **Vue / TS / JS Import Cleaner (`clean_vue_imports`)**: Merges duplicate imports in `.vue` `<script>` blocks, `.ts`, and `.js` files and strips unused symbols.
-- **English Language Compliance (`check_code_language`)**: Detects Spanish symbols, functions, variable names, and comments to enforce English standard code bases.
+- **Smart Project Detection (`checklist init`)**: Auto-detects `src/`, `backend/`, `app/`, `frontend/` etc. and pre-configures `target_dirs`.
+- **`.gitignore` Parsing**: Automatically respects `.gitignore` rules.
+- **Python Import Cleaner (`clean_py_imports`)**: Consolidates duplicate top-level imports and purges unused references.
+- **Vue / TS / JS Import Cleaner (`clean_vue_imports`)**: Merges duplicate imports in `.vue` `<script>` blocks, `.ts`, and `.js` files.
+- **Inline Import Detection**: Flags `import` statements inside functions/methods as PEP 8 audit warnings.
+- **English Language Compliance (`check_code_language`)**: Detects Spanish symbols, functions, variable names, and comments.
 - **Secrets & Hardcoded Audit (`check_hardcoded`)**: Identifies absolute paths, IP addresses, secret keys, and JWT tokens.
 - **Documentation Coverage Auditor (`verify_docs`)**: Audits modules, environment variables, and database schemas against documentation.
+- **Multiple Output Formats**: `text` (terminal), `json` (CI/CD pipelines), `llm` (Markdown action prompts for AI Agents).
 
 ---
 
 ## ⚙️ Project Setup & Configuration
 
-Initialize a default `checklist.toml` file in any target project:
+Initialize a `checklist.toml` in any target project (auto-detects project structure):
 
 ```bash
 checklist init
 ```
 
+Example output:
+```
+✨ Created configuration file at: /path/to/project/checklist.toml
+   Auto-detected target directories: ['backend', 'frontend/src', 'scripts']
+```
+
 Example `checklist.toml`:
 
 ```toml
-# 🛠️ Checklist Configuration (checklist.toml)
-
 [checklist]
 use_gitignore = true
 target_dirs = ["backend", "frontend/src", "scripts"]
@@ -74,71 +81,128 @@ allow_localhost = true
 
 ## 💻 CLI Commands & Examples
 
-Once installed, use the `checklist` command line utility:
-
+### Setup
 ```bash
-# 1. Initialize configuration file in current directory
-checklist init
-
-# 2. Run combined auto-fixers and diagnostic audit
-checklist run
-
-# 3. Run auto-fixers and format audit findings as a Markdown Action Prompt for AI Agents
-checklist run --llm
-
-# 4. Preview import cleanups WITHOUT modifying any files on disk
-checklist fix --dry-run
-
-# 5. Run auto-fixers with verbose file details
-checklist fix -v
-
-# 6. Run read-only audit with detailed line-by-line findings in terminal
-checklist audit -v
-
-# 7. Run audit or fix on specific subdirectories only
-checklist audit backend/ frontend/src/
+checklist init                        # Create checklist.toml with auto-detected dirs
 ```
 
-You can also run it via Python module syntax:
+### Auto-Fixers (Import Cleaners)
 ```bash
-python -m checklist run --llm
+checklist fix                         # Run import cleaners (modifies files on disk)
+checklist fix --dry-run               # Preview without modifying any files
+checklist fix -v                      # Verbose: show modified file list
+checklist fix backend/ app/           # Target specific directories
+```
+
+### Diagnostic Audits
+```bash
+checklist audit                       # Terminal summary of all audit findings
+checklist audit -v                    # Verbose: line-by-line detail
+checklist audit --format llm          # Markdown action prompt for AI Agents
+checklist audit --format json         # JSON output for CI/CD pipelines
+checklist audit --llm                 # Shortcut for --format llm
+checklist audit backend/ frontend/    # Target specific directories
+```
+
+### Combined (Fixers + Audit)
+```bash
+checklist run                         # Run fixers, then audit summary
+checklist run --format llm            # Run fixers, then LLM action prompt
+checklist run --format json           # Full JSON output (fixers + audit)
+checklist run --dry-run -v            # Preview fixers, then verbose audit
+```
+
+### Python module syntax
+```bash
+python -m checklist run --format llm
 ```
 
 ---
 
 ## 📦 Programmatic Python Usage
 
-Import and run auditors or auto-fixers directly inside your custom Python scripts or CI/CD pipelines:
+Import and run auditors or auto-fixers directly in custom scripts or CI/CD pipelines:
 
 ```python
 from pathlib import Path
 from checklist import (
     load_config,
     GitIgnoreFilter,
-    check_code_language,
-    check_hardcoded,
     clean_py_imports,
     clean_vue_imports,
+    detect_inline_imports,
+    check_code_language,
+    check_hardcoded,
     generate_llm_prompt,
 )
 
 root = Path.cwd()
-
-# 1. Load project settings
 config = load_config(root)
-
-# 2. Parse .gitignore rules
 ignore_filter = GitIgnoreFilter(root)
+target_dirs = config["checklist"]["target_dirs"]
 
-# 3. Clean imports automatically
-clean_py_imports(target_dirs=config["checklist"]["target_dirs"], ignore_filter=ignore_filter)
-clean_vue_imports(target_dirs=config["checklist"]["target_dirs"], ignore_filter=ignore_filter)
+# 1. Clean imports automatically
+py_res = clean_py_imports(target_dirs=target_dirs, ignore_filter=ignore_filter)
+vue_res = clean_vue_imports(target_dirs=target_dirs, ignore_filter=ignore_filter)
 
-# 4. Audit code language & secrets
-lang_results = check_code_language(target_dirs=config["checklist"]["target_dirs"], ignore_filter=ignore_filter)
-secret_results = check_hardcoded(target_dirs=config["checklist"]["target_dirs"], ignore_filter=ignore_filter)
+# 2. Audit code language & secrets
+lang_results = check_code_language(target_dirs=target_dirs, ignore_filter=ignore_filter)
+secret_results = check_hardcoded(target_dirs=target_dirs, ignore_filter=ignore_filter)
 
-# 5. Generate LLM prompt for AI Agents
-prompt = generate_llm_prompt({"language": lang_results, "hardcoded": secret_results})
+# 3. Get inline import warnings
+inline_imports = py_res.get("inline_imports", [])
+
+# 4. Generate LLM prompt for AI Agents
+prompt = generate_llm_prompt({
+    "language": lang_results,
+    "hardcoded": secret_results,
+    "inline_imports": inline_imports,
+})
 print(prompt)
+```
+
+---
+
+## 🔗 Pre-commit Integration
+
+Add to your project's `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/Mitchell-Mirano/LLMDevChecklist
+    rev: v1.1.0
+    hooks:
+      - id: checklist-fix
+      - id: checklist-audit
+```
+
+---
+
+## 🤖 GitHub Actions Integration
+
+Add the provided workflow template to your repository:
+
+```yaml
+# .github/workflows/checklist.yml
+name: LLM Dev Checklist — Code Quality Audit
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  checklist-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install git+https://github.com/Mitchell-Mirano/LLMDevChecklist.git
+      - run: checklist fix --dry-run -v
+      - run: checklist audit --format json > audit-results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checklist-audit-results
+          path: audit-results.json
 ```

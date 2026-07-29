@@ -105,13 +105,66 @@ def _merge_config(base: dict, overlay: dict):
             base[key] = value
 
 
+# Common project directory patterns to auto-detect
+_KNOWN_DIR_PATTERNS = [
+    "backend", "frontend/src", "frontend", "src", "app", "lib", "scripts",
+    "api", "server", "packages", "modules",
+]
+
+
+def detect_target_dirs(root_dir: Path) -> list:
+    """Scan project root for common directory patterns and return existing ones.
+    
+    Falls back to ["."] if no known patterns are found.
+    """
+    root = root_dir.resolve()
+    found = []
+    for pattern in _KNOWN_DIR_PATTERNS:
+        candidate = root / pattern
+        if candidate.is_dir():
+            found.append(pattern)
+    return found or ["."]
+
+
+def _generate_toml_content(target_dirs: list) -> str:
+    """Generate checklist.toml content with the given target_dirs."""
+    dirs_str = ", ".join(f'"{d}"' for d in target_dirs)
+    return f"""# 🛠️ Checklist Configuration (checklist.toml)
+
+[checklist]
+use_gitignore = true
+target_dirs = [{dirs_str}]
+exclude_dirs = [".git", ".venv", "venv", "node_modules", "dist", "site", "__pycache__", "mongo-data"]
+exclude_files = ["vite.config.js"]
+
+[checklist.auto_fixers]
+py_imports = true
+vue_imports = true
+
+[checklist.auditors]
+language = true
+hardcoded = true
+docs = true
+
+[checklist.language]
+strict_english = true
+custom_allowed_words = ["gptw", "nps", "rut"]
+
+[checklist.hardcoded]
+allow_localhost = true
+"""
+
+
 def init_config_file(root_dir: Optional[Path] = None) -> Path:
-    """Creates a default checklist.toml configuration file in the project root."""
+    """Creates a checklist.toml with auto-detected target directories."""
     root = (root_dir or Path.cwd()).resolve()
     toml_path = root / "checklist.toml"
     if not toml_path.exists():
-        toml_path.write_text(DEFAULT_TOML_TEMPLATE, encoding="utf-8")
+        detected_dirs = detect_target_dirs(root)
+        content = _generate_toml_content(detected_dirs)
+        toml_path.write_text(content, encoding="utf-8")
         print(f"✨ Created configuration file at: {toml_path}")
+        print(f"   Auto-detected target directories: {detected_dirs}")
     else:
         print(f"ℹ️ Configuration file already exists at: {toml_path}")
     return toml_path

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Module to consolidate and clean Python top-level imports."""
+"""Module to consolidate and clean Python top-level imports.
+
+Also detects inline imports inside functions/methods for audit warnings.
+"""
 
 import ast
 import sys
@@ -11,6 +14,7 @@ from .gitignore import GitIgnoreFilter
 class ImportVisitor(ast.NodeVisitor):
     def __init__(self):
         self.imports: List[Tuple[ast.AST, bool, bool]] = []
+        self.inline_imports: List[Tuple[ast.AST, str]] = []  # (node, scope_description)
         self.current_scope: List[str] = ["module"]
         self.in_module_try_except: bool = False
         self.saw_sys_path_setup: bool = False
@@ -50,12 +54,18 @@ class ImportVisitor(ast.NodeVisitor):
         is_top = (self.current_scope == ["module"]) and not self.saw_sys_path_setup
         is_guarded = self.in_module_try_except or self.saw_sys_path_setup
         self.imports.append((node, is_top, is_guarded))
+        if self.current_scope != ["module"]:
+            scope_desc = self.current_scope[-1]
+            self.inline_imports.append((node, scope_desc))
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node):
         is_top = (self.current_scope == ["module"]) and not self.saw_sys_path_setup
         is_guarded = self.in_module_try_except or self.saw_sys_path_setup
         self.imports.append((node, is_top, is_guarded))
+        if self.current_scope != ["module"]:
+            scope_desc = self.current_scope[-1]
+            self.inline_imports.append((node, scope_desc))
         self.generic_visit(node)
 
 
@@ -158,6 +168,39 @@ def clean_file_imports(filepath: Path, fix: bool = True) -> bool:
     return False
 
 
+def detect_inline_imports(filepath: Path, root_dir: Optional[Path] = None) -> List[dict]:
+    """Detect imports inside functions/methods (not at module top-level).
+    
+    Returns a list of findings with file, line_no, scope, and import_statement.
+    These are audit-only warnings — inline imports may be intentional (lazy loading,
+    circular dependency guards).
+    """
+    findings = []
+    try:
+        content = filepath.read_text(encoding="utf-8")
+        tree = ast.parse(content, filename=str(filepath))
+    except Exception:
+        return findings
+
+    visitor = ImportVisitor()
+    visitor.visit(tree)
+
+    root = (root_dir or Path.cwd()).resolve()
+    rel_path = str(filepath.relative_to(root) if root in filepath.parents else filepath)
+
+    for node, scope_desc in visitor.inline_imports:
+        imp_str = unparse_import(node)
+        if imp_str:
+            findings.append({
+                "file": rel_path,
+                "line_no": node.lineno,
+                "scope": scope_desc,
+                "import_statement": imp_str,
+            })
+
+    return findings
+
+
 def clean_py_imports(
     target_dirs: Optional[List[str]] = None,
     fix: bool = True,
@@ -173,6 +216,7 @@ def clean_py_imports(
         target_dirs = [str(c) for c in candidates if c.exists()] or [str(root)]
 
     modified_files = []
+    all_inline_imports = []
     total_files = 0
 
     for target in target_dirs:
@@ -190,11 +234,15 @@ def clean_py_imports(
             total_files += 1
             if clean_file_imports(filepath, fix=fix):
                 modified_files.append(str(filepath.relative_to(root) if root in filepath.parents else filepath))
+            
+            inline = detect_inline_imports(filepath, root_dir=root)
+            all_inline_imports.extend(inline)
 
     return {
         "total_files": total_files,
         "modified_count": len(modified_files),
-        "modified_files": modified_files
+        "modified_files": modified_files,
+        "inline_imports": all_inline_imports,
     }
 
 

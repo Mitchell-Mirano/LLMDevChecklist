@@ -1,0 +1,15 @@
+- id: checklist-fix
+  name: checklist-fix
+  description: "Run deterministic auto-fixers (consolidate & clean Python/Vue/TS/JS imports)"
+  entry: checklist fix
+  language: python
+  types_or: [python, vue, javascript, ts]
+  pass_filenames: false
+
+- id: checklist-audit
+  name: checklist-audit
+  description: "Run context-aware diagnostic auditors (language, hardcoded secrets, docs alignment)"
+  entry: checklist audit --format json
+  language: python
+  types_or: [python, vue, javascript, ts]
+  pass_filenames: false
