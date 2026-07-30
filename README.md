@@ -206,3 +206,90 @@ jobs:
           name: checklist-audit-results
           path: audit-results.json
 ```
+
+---
+
+## 📝 Thesis Checker (UNMSM LaTeX Validator)
+
+A separate validation suite for LaTeX thesis manuscripts, designed to enforce UNMSM (Universidad Nacional Mayor de San Marcos) thesis guidelines.
+
+### CLI Usage
+
+```bash
+# Validate a LaTeX thesis project
+thesis-checker --target /path/to/latex/project
+
+# JSON output for CI/CD
+thesis-checker --target /path/to/latex/project --format json
+
+# Via Python module
+python -m thesis_checker --target /path/to/latex/project
+```
+
+### Available Rules
+
+| Rule | Description |
+|------|-------------|
+| `FileExistenceRule` | Verifies all required files exist (`tesis.tex`, chapters, bibliography) |
+| `SectionHierarchyRule` | Validates exact section titles and ordering per chapter |
+| `RegexConstraintRule` | Checks for forbidden or required patterns in files |
+| `ItemCountConsistencyRule` | Ensures objectives, problems, and hypotheses counts match |
+| `NoHardcodedTablesRule` | Tables must be imported via `\input{}`, not hardcoded |
+| `CiteVerificationRule` | Every `\cite{}` key must exist in the `.bib` file |
+| `OrphanLabelRule` | Every `\label{}` must have a corresponding `\ref{}` |
+| `EquationEnvironmentRule` | Prohibits unnumbered equations (`$$`, `equation*`) |
+| `LiteraturePDFNamingRule` | PDF filenames must match citation keys in `.bib` |
+
+### UNMSM Thesis Structure Expected
+
+```
+project/
+├── tesis.tex
+├── bibliografia.bib
+└── chapters/
+    ├── 01_problema_investigacion.tex
+    ├── 02_revision_literatura.tex
+    ├── 03_hipotesis_variables.tex
+    ├── 04_materiales_metodos.tex
+    ├── 05_resultados.tex
+    ├── 06_conclusiones.tex
+    └── 07_anexos.tex
+```
+
+### Programmatic Usage
+
+```python
+from thesis_checker import ValidatorRunner, get_unmsm_rules
+
+runner = ValidatorRunner("/path/to/latex/project")
+for rule in get_unmsm_rules():
+    runner.add_rule(rule)
+
+results = runner.run(output_format="json")  # or "text"
+print(f"Passed: {results['passed']}/{results['total_rules']}")
+```
+
+### Custom Rules
+
+Extend `BaseRule` to create your own institutional rules:
+
+```python
+from thesis_checker import BaseRule, ValidationContext, RuleResult
+
+class CustomRule(BaseRule):
+    @property
+    def name(self):
+        return "CustomRule"
+
+    @property
+    def description(self):
+        return "My custom validation rule."
+
+    def validate(self, context: ValidationContext) -> RuleResult:
+        result = RuleResult(RuleResult.PASS)
+        content = context.get_file_content("tesis.tex")
+        if "keyword" not in content:
+            result.add_error("Missing required keyword in tesis.tex")
+        return result
+```
+
