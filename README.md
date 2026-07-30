@@ -14,10 +14,10 @@ pip install git+https://github.com/Mitchell-Mirano/LLMDevChecklist.git
 pipx install git+https://github.com/Mitchell-Mirano/LLMDevChecklist.git
 ```
 
-After installation, both `checklist` and `llm-dev-checklist` commands are available:
+After installation, the primary CLI commands `devcheck` and `tesischeck` are available:
 ```bash
-checklist --help
-llm-dev-checklist --help  # Same tool, alternative name
+devcheck --help        # Code quality & import cleanup suite (aliases: checklist, llm-dev-checklist)
+tesischeck --help      # UNMSM LaTeX thesis manuscript validator (alias: thesis-checker)
 ```
 
 ---
@@ -25,7 +25,7 @@ llm-dev-checklist --help  # Same tool, alternative name
 ## 🚀 Features
 
 - **TOML Configuration (`checklist.toml` / `pyproject.toml`)**: Flexible, per-project rules.
-- **Smart Project Detection (`checklist init`)**: Auto-detects `src/`, `backend/`, `app/`, `frontend/` etc. and pre-configures `target_dirs`.
+- **Smart Project Detection (`devcheck init`)**: Auto-detects `src/`, `backend/`, `app/`, `frontend/` etc. and pre-configures `target_dirs`.
 - **`.gitignore` Parsing**: Automatically respects `.gitignore` rules.
 - **Python Import Cleaner (`clean_py_imports`)**: Consolidates duplicate top-level imports and purges unused references.
 - **Vue / TS / JS Import Cleaner (`clean_vue_imports`)**: Merges duplicate imports in `.vue` `<script>` blocks, `.ts`, and `.js` files.
@@ -34,6 +34,7 @@ llm-dev-checklist --help  # Same tool, alternative name
 - **Secrets & Hardcoded Audit (`check_hardcoded`)**: Identifies absolute paths, IP addresses, secret keys, and JWT tokens.
 - **Documentation Coverage Auditor (`verify_docs`)**: Audits modules, environment variables, and database schemas against documentation.
 - **Multiple Output Formats**: `text` (terminal), `json` (CI/CD pipelines), `llm` (Markdown action prompts for AI Agents).
+- **LaTeX Thesis Checker (`tesischeck`)**: Validates UNMSM thesis manuscript structure, consistency, equation environments, hardcoded tables, citations, and labels.
 
 ---
 
@@ -42,7 +43,7 @@ llm-dev-checklist --help  # Same tool, alternative name
 Initialize a `checklist.toml` in any target project (auto-detects project structure):
 
 ```bash
-checklist init
+devcheck init
 ```
 
 Example output:
@@ -79,137 +80,42 @@ allow_localhost = true
 
 ---
 
-## 💻 CLI Commands & Examples
+## 💻 CLI Commands & Examples (`devcheck`)
 
 ### Setup
 ```bash
-checklist init                        # Create checklist.toml with auto-detected dirs
+devcheck init                        # Create checklist.toml with auto-detected dirs
 ```
 
 ### Auto-Fixers (Import Cleaners)
 ```bash
-checklist fix                         # Run import cleaners (modifies files on disk)
-checklist fix --dry-run               # Preview without modifying any files
-checklist fix -v                      # Verbose: show modified file list
-checklist fix backend/ app/           # Target specific directories
+devcheck fix                         # Run import cleaners (modifies files on disk)
+devcheck fix --dry-run               # Preview without modifying any files
+devcheck fix -v                      # Verbose: show modified file list
+devcheck fix backend/ app/           # Target specific directories
 ```
 
 ### Diagnostic Audits
 ```bash
-checklist audit                       # Terminal summary of all audit findings
-checklist audit -v                    # Verbose: line-by-line detail
-checklist audit --format llm          # Markdown action prompt for AI Agents
-checklist audit --format json         # JSON output for CI/CD pipelines
-checklist audit --llm                 # Shortcut for --format llm
-checklist audit backend/ frontend/    # Target specific directories
+devcheck audit                       # Terminal summary of all audit findings
+devcheck audit -v                    # Verbose: line-by-line detail
+devcheck audit --format llm          # Markdown action prompt for AI Agents
+devcheck audit --format json         # JSON output for CI/CD pipelines
+devcheck audit --llm                 # Shortcut for --format llm
+devcheck audit backend/ frontend/    # Target specific directories
 ```
 
 ### Combined (Fixers + Audit)
 ```bash
-checklist run                         # Run fixers, then audit summary
-checklist run --format llm            # Run fixers, then LLM action prompt
-checklist run --format json           # Full JSON output (fixers + audit)
-checklist run --dry-run -v            # Preview fixers, then verbose audit
-```
-
-### Python module syntax
-```bash
-python -m checklist run --format llm
+devcheck run                         # Run fixers, then audit summary
+devcheck run --format llm            # Run fixers, then LLM action prompt
+devcheck run --format json           # Full JSON output (fixers + audit)
+devcheck run --dry-run -v            # Preview fixers, then verbose audit
 ```
 
 ---
 
-## 📦 Programmatic Python Usage
-
-Import and run auditors or auto-fixers directly in custom scripts or CI/CD pipelines:
-
-```python
-from pathlib import Path
-from checklist import (
-    load_config,
-    GitIgnoreFilter,
-    clean_py_imports,
-    clean_vue_imports,
-    detect_inline_imports,
-    check_code_language,
-    check_hardcoded,
-    generate_llm_prompt,
-)
-
-root = Path.cwd()
-config = load_config(root)
-ignore_filter = GitIgnoreFilter(root)
-target_dirs = config["checklist"]["target_dirs"]
-
-# 1. Clean imports automatically
-py_res = clean_py_imports(target_dirs=target_dirs, ignore_filter=ignore_filter)
-vue_res = clean_vue_imports(target_dirs=target_dirs, ignore_filter=ignore_filter)
-
-# 2. Audit code language & secrets
-lang_results = check_code_language(target_dirs=target_dirs, ignore_filter=ignore_filter)
-secret_results = check_hardcoded(target_dirs=target_dirs, ignore_filter=ignore_filter)
-
-# 3. Get inline import warnings
-inline_imports = py_res.get("inline_imports", [])
-
-# 4. Generate LLM prompt for AI Agents
-prompt = generate_llm_prompt({
-    "language": lang_results,
-    "hardcoded": secret_results,
-    "inline_imports": inline_imports,
-})
-print(prompt)
-```
-
----
-
-## 🔗 Pre-commit Integration
-
-Add to your project's `.pre-commit-config.yaml`:
-
-```yaml
-repos:
-  - repo: https://github.com/Mitchell-Mirano/LLMDevChecklist
-    rev: v1.1.0
-    hooks:
-      - id: checklist-fix
-      - id: checklist-audit
-```
-
----
-
-## 🤖 GitHub Actions Integration
-
-Add the provided workflow template to your repository:
-
-```yaml
-# .github/workflows/checklist.yml
-name: LLM Dev Checklist — Code Quality Audit
-
-on:
-  pull_request:
-    branches: [main, develop]
-
-jobs:
-  checklist-audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install git+https://github.com/Mitchell-Mirano/LLMDevChecklist.git
-      - run: checklist fix --dry-run -v
-      - run: checklist audit --format json > audit-results.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: checklist-audit-results
-          path: audit-results.json
-```
-
----
-
-## 📝 Thesis Checker (UNMSM LaTeX Validator)
+## 📝 Thesis Checker (`tesischeck`)
 
 A separate validation suite for LaTeX thesis manuscripts, designed to enforce UNMSM (Universidad Nacional Mayor de San Marcos) thesis guidelines.
 
@@ -217,10 +123,10 @@ A separate validation suite for LaTeX thesis manuscripts, designed to enforce UN
 
 ```bash
 # Validate a LaTeX thesis project
-thesis-checker --target /path/to/latex/project
+tesischeck --target /path/to/latex/project
 
 # JSON output for CI/CD
-thesis-checker --target /path/to/latex/project --format json
+tesischeck --target /path/to/latex/project --format json
 
 # Via Python module
 python -m thesis_checker --target /path/to/latex/project
@@ -292,4 +198,22 @@ class CustomRule(BaseRule):
             result.add_error("Missing required keyword in tesis.tex")
         return result
 ```
+
+---
+
+## 🧪 Centralized Test Suite
+
+The project includes a centralized test suite differentiated per module:
+
+```bash
+# Run all tests (devcheck + tesischeck)
+python3 -m unittest discover tests -v
+
+# Run only devcheck tests
+python3 -m unittest discover tests/test_devcheck -v
+
+# Run only tesischeck tests
+python3 -m unittest discover tests/test_tesischeck -v
+```
+
 

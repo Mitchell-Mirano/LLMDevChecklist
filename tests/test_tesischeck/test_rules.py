@@ -6,7 +6,7 @@ from thesis_checker.rules.structure import FileExistenceRule
 from thesis_checker.rules.advanced import NoHardcodedTablesRule, OrphanLabelRule, EquationEnvironmentRule
 
 
-class TestLatexValidatorRules(unittest.TestCase):
+class TestTesischeckRules(unittest.TestCase):
 
     def setUp(self):
         self.context = MagicMock(spec=ValidationContext)

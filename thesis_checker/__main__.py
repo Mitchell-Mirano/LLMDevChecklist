@@ -9,7 +9,7 @@ from .unmsm_rules import get_unmsm_rules
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="thesis-checker",
+        prog="tesischeck",
         description="📝 LaTeX Manuscript Validator — Validates thesis structure against UNMSM guidelines"
     )
     parser.add_argument("--target", required=True, help="Path to the LaTeX project directory")

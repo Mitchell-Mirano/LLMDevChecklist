@@ -23,8 +23,8 @@ from . import generate_llm_prompt
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="checklist",
-        description="🛠️ LLM Dev Quality Checklist: Automated import fixers & AI-agent diagnostic auditors."
+        prog="devcheck",
+        description="🛠️ Dev Quality Checklist: Automated import fixers & AI-agent diagnostic auditors."
     )
 
     subparsers = parser.add_subparsers(dest="mode", help="Command mode to execute")
