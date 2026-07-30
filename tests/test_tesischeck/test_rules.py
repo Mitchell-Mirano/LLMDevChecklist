@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import MagicMock
 
-from thesis_checker.core import RuleResult, ValidationContext
-from thesis_checker.rules.structure import FileExistenceRule
-from thesis_checker.rules.advanced import NoHardcodedTablesRule, OrphanLabelRule, EquationEnvironmentRule
+from tesischeck.core import RuleResult, ValidationContext
+from tesischeck.rules.structure import FileExistenceRule
+from tesischeck.rules.advanced import NoHardcodedTablesRule, OrphanLabelRule, EquationEnvironmentRule
 
 
 class TestTesischeckRules(unittest.TestCase):

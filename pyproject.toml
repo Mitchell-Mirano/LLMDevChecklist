@@ -16,15 +16,15 @@ dependencies = [
 ]
 
 [project.scripts]
-devcheck = "checklist.cli:main"
-tesischeck = "thesis_checker.__main__:main"
+devcheck = "devcheck.cli:main"
+tesischeck = "tesischeck.__main__:main"
 # Backward-compatible aliases
-checklist = "checklist.cli:main"
-llm-dev-checklist = "checklist.cli:main"
-thesis-checker = "thesis_checker.__main__:main"
+checklist = "devcheck.cli:main"
+llm-dev-checklist = "devcheck.cli:main"
+thesis-checker = "tesischeck.__main__:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["checklist", "thesis_checker"]
+packages = ["devcheck", "tesischeck"]
 
 [project.urls]
 Homepage = "https://github.com/mitchellmirano/LLMDevChecklist"

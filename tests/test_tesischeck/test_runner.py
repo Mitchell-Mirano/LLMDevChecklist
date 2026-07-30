@@ -2,7 +2,7 @@ import unittest
 import tempfile
 import shutil
 from pathlib import Path
-from thesis_checker import ValidatorRunner, BaseRule, RuleResult, ValidationContext, get_unmsm_rules
+from tesischeck import ValidatorRunner, BaseRule, RuleResult, ValidationContext, get_unmsm_rules
 
 
 class DummyPassRule(BaseRule):

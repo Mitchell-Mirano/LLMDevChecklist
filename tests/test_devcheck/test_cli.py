@@ -11,7 +11,7 @@ class TestDevcheckCLI(unittest.TestCase):
         """devcheck audit --format json should produce valid JSON."""
         project_root = Path(__file__).resolve().parent.parent.parent
         result = subprocess.run(
-            [sys.executable, "-m", "checklist", "audit", "--format", "json"],
+            [sys.executable, "-m", "devcheck", "audit", "--format", "json"],
             capture_output=True, text=True, cwd=str(project_root)
         )
         self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")

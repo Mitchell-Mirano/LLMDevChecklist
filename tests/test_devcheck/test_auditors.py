@@ -2,7 +2,7 @@ import unittest
 import tempfile
 import shutil
 from pathlib import Path
-from checklist import check_code_language, check_hardcoded, generate_llm_prompt
+from devcheck import check_code_language, check_hardcoded, generate_llm_prompt
 
 
 class TestDevcheckAuditors(unittest.TestCase):

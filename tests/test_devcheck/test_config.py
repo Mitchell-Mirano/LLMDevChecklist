@@ -2,8 +2,8 @@ import unittest
 import tempfile
 import shutil
 from pathlib import Path
-from checklist import load_config, init_config_file
-from checklist.config import detect_target_dirs
+from devcheck import load_config, init_config_file
+from devcheck.config import detect_target_dirs
 
 
 class TestDevcheckConfig(unittest.TestCase):

@@ -2,7 +2,7 @@ import unittest
 import tempfile
 import shutil
 from pathlib import Path
-from checklist import clean_py_imports, detect_inline_imports
+from devcheck import clean_py_imports, detect_inline_imports
 
 
 class TestDevcheckFixers(unittest.TestCase):
