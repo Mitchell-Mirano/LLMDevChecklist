@@ -18,6 +18,7 @@ from .vue_imports import clean_vue_imports
 from .check_code_language import check_code_language
 from .check_hardcoded import check_hardcoded
 from .verify_docs import verify_docs
+from .design import check_design
 from . import generate_llm_prompt
 
 
@@ -153,9 +154,20 @@ def main():
         if not is_json:
             print("🧠 [2/2] Running Context-Aware Diagnostic Auditors...")
 
+        auditors_cfg = cfg.get("auditors", {})
         lang_res = check_code_language(target_dirs=target_dirs, ignore_filter=ignore_filter, root_dir=root)
         hard_res = check_hardcoded(target_dirs=target_dirs, ignore_filter=ignore_filter, root_dir=root)
         docs_res = verify_docs(root_dir=root)
+        design_res = (
+            check_design(
+                target_dirs=target_dirs,
+                ignore_filter=ignore_filter,
+                root_dir=root,
+                design_cfg=cfg.get("design", {}),
+            )
+            if auditors_cfg.get("design", True)
+            else {"total_files": 0, "flagged_files_count": 0, "total_issues": 0, "issues_by_file": {}, "metrics": {}, "contrast": {"checked_pairs": [], "failures_count": 0}}
+        )
 
         # Collect inline import warnings from fix step or run fresh
         inline_imports = []
@@ -169,6 +181,7 @@ def main():
             "language": lang_res,
             "hardcoded": hard_res,
             "docs": docs_res,
+            "design": design_res,
             "inline_imports": inline_imports,
         }
 
@@ -182,6 +195,7 @@ def main():
             print(f"   • 🌐 Language & Naming Audit:    {lang_res['total_issues']} finding(s) across {lang_res['flagged_files_count']} file(s)")
             print(f"   • 🔍 Hardcoded Secrets/IP Audit: {hard_res['total_issues']} finding(s) across {hard_res['flagged_files_count']} file(s)")
             print(f"   • 📚 Documentation Align Audit:  {docs_res['total_issues']} discrepancy(s)")
+            print(f"   • 🎨 Design System & A11y Audit: {design_res['total_issues']} finding(s) across {design_res['flagged_files_count']} file(s) (Tokenization: {design_res.get('metrics', {}).get('tokenization_rate', 100.0)}%)")
             print(f"   • 📦 Inline Import Warnings:     {len(inline_imports)} import(s) inside functions/methods")
 
             if verbose:
@@ -201,6 +215,15 @@ def main():
                     print("\n--- 📦 Inline Import Warnings (Verbose) ---")
                     for imp in inline_imports:
                         print(f"  📄 {imp['file']}:{imp['line_no']} [{imp['scope']}]: {imp['import_statement']}")
+                if design_res["issues_by_file"] or design_res["contrast"]["failures_count"] > 0:
+                    print("\n--- 🎨 Design System & A11y Findings (Verbose) ---")
+                    for path, issues in design_res["issues_by_file"].items():
+                        print(f"  📄 {path}")
+                        for issue in issues:
+                            print(f"     Line {issue['line_no']} [{issue['rule']}]: {issue['matched']} — {issue['message']}")
+                    for pair in design_res["contrast"]["checked_pairs"]:
+                        if pair["status"] == "FAIL":
+                            print(f"  ⚠️  Contrast FAIL [{pair['theme']}]: {pair['fg_token']} on {pair['bg_token']} = {pair['ratio']}:1 (< 4.5:1)")
 
             print("\n💡 Tip: Run `checklist audit --format llm` for an AI Agent action prompt, or `--format json` for CI/CD integration!")
 

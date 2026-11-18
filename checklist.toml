@@ -14,6 +14,7 @@ vue_imports = true
 language = true
 hardcoded = true
 docs = true
+design = true
 
 [checklist.language]
 strict_english = true
@@ -21,3 +22,10 @@ custom_allowed_words = ["gptw", "nps", "rut"]
 
 [checklist.hardcoded]
 allow_localhost = true
+
+[checklist.design]
+tokens_files = []
+extensions = [".vue", ".css", ".scss", ".tsx", ".jsx", ".svelte", ".html"]
+min_contrast_aa = 4.5
+max_z_index = 100
+icon_library = ""

@@ -5,6 +5,7 @@ Loads settings from checklist.toml or pyproject.toml [tool.checklist].
 
 from pathlib import Path
 from typing import Dict, Any, Optional
+from .design.tokens import discover_tokens_files
 try:
     import tomllib
 except ImportError:
@@ -26,6 +27,7 @@ DEFAULT_CONFIG = {
         "language": True,
         "hardcoded": True,
         "docs": True,
+        "design": True,
     },
     "language": {
         "strict_english": True,
@@ -33,6 +35,28 @@ DEFAULT_CONFIG = {
     },
     "hardcoded": {
         "allow_localhost": True,
+    },
+    "design": {
+        "tokens_files": [],
+        "extensions": [".vue", ".css", ".scss", ".tsx", ".jsx", ".svelte", ".html"],
+        "min_contrast_aa": 4.5,
+        "min_contrast_large": 3.0,
+        "contrast_pairs": [],
+        "allowed_unicode": [],
+        "max_z_index": 100,
+        "icon_library": "",
+        "rules": {
+            "hardcoded_colors": True,
+            "undefined_tokens": True,
+            "contrast": True,
+            "unicode_icons": True,
+            "svg_viewbox": True,
+            "inline_styles": True,
+            "important": True,
+            "hardcoded_font": True,
+            "z_index_magic": True,
+            "a11y_basic": True,
+        },
     }
 }
 
@@ -52,6 +76,7 @@ vue_imports = true
 language = true
 hardcoded = true
 docs = true
+design = true
 
 [checklist.language]
 strict_english = true
@@ -59,6 +84,14 @@ custom_allowed_words = ["gptw", "nps", "rut"]
 
 [checklist.hardcoded]
 allow_localhost = true
+
+[checklist.design]
+# Leave tokens_files empty to auto-detect main.css / tokens.css / variables.css
+tokens_files = []
+extensions = [".vue", ".css", ".scss", ".tsx", ".jsx", ".svelte", ".html"]
+min_contrast_aa = 4.5
+max_z_index = 100
+icon_library = ""
 """
 
 
@@ -71,6 +104,10 @@ def load_config(root_dir: Optional[Path] = None) -> Dict[str, Any]:
         "auditors": dict(DEFAULT_CONFIG["auditors"]),
         "language": dict(DEFAULT_CONFIG["language"]),
         "hardcoded": dict(DEFAULT_CONFIG["hardcoded"]),
+        "design": {
+            **DEFAULT_CONFIG["design"],
+            "rules": dict(DEFAULT_CONFIG["design"]["rules"]),
+        },
     }
 
     # 1. Try checklist.toml in project root
@@ -126,9 +163,10 @@ def detect_target_dirs(root_dir: Path) -> list:
     return found or ["."]
 
 
-def _generate_toml_content(target_dirs: list) -> str:
+def _generate_toml_content(target_dirs: list, tokens_files: Optional[list] = None) -> str:
     """Generate checklist.toml content with the given target_dirs."""
     dirs_str = ", ".join(f'"{d}"' for d in target_dirs)
+    tokens_str = ", ".join(f'"{t}"' for t in (tokens_files or []))
     return f"""# 🛠️ Checklist Configuration (checklist.toml)
 
 [checklist]
@@ -145,6 +183,7 @@ vue_imports = true
 language = true
 hardcoded = true
 docs = true
+design = true
 
 [checklist.language]
 strict_english = true
@@ -152,6 +191,14 @@ custom_allowed_words = ["gptw", "nps", "rut"]
 
 [checklist.hardcoded]
 allow_localhost = true
+
+[checklist.design]
+# Auto-detected or manual token CSS files (main.css / tokens.css / variables.css)
+tokens_files = [{tokens_str}]
+extensions = [".vue", ".css", ".scss", ".tsx", ".jsx", ".svelte", ".html"]
+min_contrast_aa = 4.5
+max_z_index = 100
+icon_library = ""
 """
 
 
@@ -161,10 +208,15 @@ def init_config_file(root_dir: Optional[Path] = None) -> Path:
     toml_path = root / "checklist.toml"
     if not toml_path.exists():
         detected_dirs = detect_target_dirs(root)
-        content = _generate_toml_content(detected_dirs)
+        detected_tokens = [
+            str(p.relative_to(root)) for p in discover_tokens_files(root) if root in p.parents
+        ]
+        content = _generate_toml_content(detected_dirs, detected_tokens)
         toml_path.write_text(content, encoding="utf-8")
         print(f"✨ Created configuration file at: {toml_path}")
         print(f"   Auto-detected target directories: {detected_dirs}")
+        if detected_tokens:
+            print(f"   Auto-detected design tokens: {detected_tokens}")
     else:
         print(f"ℹ️ Configuration file already exists at: {toml_path}")
     return toml_path

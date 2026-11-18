@@ -10,6 +10,7 @@ from .vue_imports import clean_vue_imports
 from .check_code_language import check_code_language
 from .check_hardcoded import check_hardcoded
 from .verify_docs import verify_docs
+from .design import check_design
 
 # Group 1: Deterministic Auto-Fixers (no LLM required)
 AUTO_FIXERS = {
@@ -22,6 +23,7 @@ LLM_AUDITORS = {
     "language": check_code_language,
     "hardcoded": check_hardcoded,
     "docs": verify_docs,
+    "design": check_design,
 }
 
 
@@ -74,6 +76,29 @@ def generate_llm_prompt(audit_results: dict) -> str:
             md.append(f"- [ ] [{imp['file']}:L{imp['line_no']}](file://{imp['file']}#L{imp['line_no']}) - `{imp['import_statement']}` inside `{imp['scope']}`")
         md.append("")
 
+    # 5. Design System, Contrast & SVG Icons
+    design = audit_results.get("design", {})
+    if design.get("total_issues", 0) > 0:
+        has_issues = True
+        metrics = design.get("metrics", {})
+        tokens_files = metrics.get("tokens_files", [])
+        tokens_hint = f" (tokens source: {', '.join(tokens_files)})" if tokens_files else ""
+        md.append(f"### 🎨 5. Design System, Contrast & SVG Icons{tokens_hint}")
+        for file_path, issues in design.get("issues_by_file", {}).items():
+            for issue in issues:
+                line_no = issue["line_no"]
+                md.append(
+                    f"- [ ] [{file_path}:L{line_no}](file://{file_path}#L{line_no}) "
+                    f"- **{issue['rule']}** (`{issue['matched']}`): {issue['message']}"
+                )
+        for pair in design.get("contrast", {}).get("checked_pairs", []):
+            if pair.get("status") == "FAIL":
+                md.append(
+                    f"- [ ] **wcag-contrast** (`{pair['theme']}`): `{pair['fg_token']}` ({pair['fg_value']}) "
+                    f"on `{pair['bg_token']}` ({pair['bg_value']}) has ratio **{pair['ratio']}:1** (requires >= 4.5:1 AA)"
+                )
+        md.append("")
+
     if not has_issues:
         md.append("🎉 **No diagnostic issues found! Codebase is 100% clean and compliant.**")
 
@@ -90,6 +115,7 @@ __all__ = [
     "check_code_language",
     "check_hardcoded",
     "verify_docs",
+    "check_design",
     "AUTO_FIXERS",
     "LLM_AUDITORS",
     "generate_llm_prompt",
