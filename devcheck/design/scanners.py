@@ -30,6 +30,7 @@ _HEX_CONTEXT_RE = re.compile(
 
 # CSS Variables
 _CSS_VAR_RE = re.compile(r"var\(\s*(--[\w-]+)(?:\s*,[^)]+)?\s*\)")
+_CSS_VAR_DECL_LINE_RE = re.compile(r"(?:^|[{;\s])--[\w-]+\s*:")
 
 # Unicode emojis & pseudo-icons (including variation selector U+FE0F)
 _EMOJI_RE = re.compile(
@@ -165,8 +166,10 @@ def scan_design_file(
                 ):
                     undefined_tokens += 1
 
-        # Hardcoded colors (skip inside token definition files)
-        if not is_token_file and rules_cfg.get("hardcoded_colors", True):
+        is_token_decl = is_token_file and bool(_CSS_VAR_DECL_LINE_RE.search(line))
+
+        # Hardcoded colors (allowed only in CSS custom property declarations inside token files)
+        if not is_token_decl and rules_cfg.get("hardcoded_colors", True):
             if _HEX_CONTEXT_RE.search(line):
                 for m in _HEX_RE.finditer(line):
                     if _add_issue(
@@ -218,13 +221,15 @@ def scan_design_file(
                     "Static inline `style=\"...\"` detected; move styles to scoped CSS using design tokens."
                 )
 
-        # !important & magic z-index & hardcoded font-family
-        if is_style and not is_token_file:
-            if rules_cfg.get("important", True) and _IMPORTANT_RE.search(line):
-                _add_issue(
-                    issues, suppressions, line_no, "important-override", "!important",
-                    "Avoid `!important`; fix selector specificity or token hierarchy instead."
-                )
+        # !important banned everywhere in the app (CSS, SCSS, Vue, inline styles)
+        if rules_cfg.get("important", True) and _IMPORTANT_RE.search(line):
+            _add_issue(
+                issues, suppressions, line_no, "important-override", "!important",
+                "Avoid `!important`; fix selector specificity or token hierarchy instead."
+            )
+
+        # Hardcoded font-family & magic z-index (allowed only in token declarations)
+        if is_style and not is_token_decl:
             if rules_cfg.get("hardcoded_font", True):
                 fm = _FONT_FAMILY_RE.search(line)
                 if fm and "var(" not in fm.group(1).lower() and "inherit" not in fm.group(1).lower():

@@ -7,6 +7,7 @@ from .contrast import contrast_ratio, evaluate_contrast
 from .scanners import scan_design_file
 from .tokens import (
     discover_tokens_files,
+    find_duplicate_color_tokens,
     infer_contrast_pairs,
     parse_css_tokens,
     resolve_token_value,
@@ -17,6 +18,7 @@ DEFAULT_EXTENSIONS = (".vue", ".css", ".scss", ".tsx", ".jsx", ".svelte", ".html
 DEFAULT_RULES = {
     "hardcoded_colors": True,
     "undefined_tokens": True,
+    "duplicate_tokens": True,
     "contrast": True,
     "unicode_icons": True,
     "svg_viewbox": True,
@@ -174,6 +176,13 @@ def check_design(
                 rel_path = str(filepath.relative_to(root) if root in filepath.parents else filepath)
                 issues_by_file[rel_path] = res["issues"]
 
+    duplicate_tokens_count = 0
+    if rules_cfg.get("duplicate_tokens", True) and token_paths:
+        dup_by_file = find_duplicate_color_tokens(token_paths, root)
+        for rel_path, dup_issues in dup_by_file.items():
+            duplicate_tokens_count += len(dup_issues)
+            issues_by_file.setdefault(rel_path, []).extend(dup_issues)
+
     file_issues_count = sum(len(v) for v in issues_by_file.values())
     total_issues = file_issues_count + contrast_res["failures_count"]
     denom = total_css_vars + total_hardcoded_colors
@@ -194,6 +203,7 @@ def check_design(
             "tokenization_rate": tokenization_rate,
             "unicode_icons": total_unicode_icons,
             "undefined_tokens": total_undefined_tokens,
+            "duplicate_tokens": duplicate_tokens_count,
             "tokens_files": rel_token_files,
             "defined_tokens_count": len(defined_tokens),
         },

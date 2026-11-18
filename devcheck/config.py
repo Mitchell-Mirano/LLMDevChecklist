@@ -48,6 +48,7 @@ DEFAULT_CONFIG = {
         "rules": {
             "hardcoded_colors": True,
             "undefined_tokens": True,
+            "duplicate_tokens": True,
             "contrast": True,
             "unicode_icons": True,
             "svg_viewbox": True,

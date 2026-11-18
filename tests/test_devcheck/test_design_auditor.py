@@ -133,6 +133,30 @@ class TestDesignAuditor(unittest.TestCase):
         self.assertIn("hardcoded-color", prompt)
         self.assertIn("src/App.vue:L12", prompt)
 
+    def test_duplicate_tokens_important_and_style_rules_in_token_file(self):
+        src = self.test_dir / "src"
+        src.mkdir(parents=True)
+        style_css = src / "style.css"
+        style_css.write_text(
+            ":root {\n"
+            "  --accent-orange: #f97316;\n"
+            "  --attr-str: #f97316;\n"
+            "  --bg-dark: #080b12;\n"
+            "}\n"
+            ".badge {\n"
+            "  color: #ffffff !important;\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
+        res = check_design(target_dirs=["src"], root_dir=self.test_dir)
+        self.assertIn("src/style.css", res["issues_by_file"])
+        rules = {i["rule"] for i in res["issues_by_file"]["src/style.css"]}
+        self.assertIn("duplicate-color-token", rules)
+        self.assertIn("important-override", rules)
+        self.assertIn("hardcoded-color", rules)
+        self.assertEqual(res["metrics"]["duplicate_tokens"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

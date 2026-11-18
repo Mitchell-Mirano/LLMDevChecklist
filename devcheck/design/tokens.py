@@ -8,6 +8,7 @@ from .contrast import parse_color
 DEFAULT_TOKEN_FILENAMES = (
     "main.css",
     "style.css",
+    "styles.css",
     "base.css",
     "tokens.css",
     "variables.css",
@@ -140,3 +141,72 @@ def infer_contrast_pairs(
             pairs.append((fg, bg))
 
     return pairs
+
+
+def find_duplicate_color_tokens(token_paths: List[Path], root_dir: Path) -> Dict[str, List[dict]]:
+    """Find CSS variables in the same theme that have different names but identical colors."""
+    duplicates_by_file: Dict[str, List[dict]] = {}
+    themes = parse_css_tokens(token_paths)
+    default_tokens = themes.get("default", {})
+
+    # Map (theme, var_name) -> (rel_path, line_no)
+    locations: Dict[Tuple[str, str], Tuple[str, int]] = {}
+    for path in token_paths:
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except Exception:
+            continue
+        rel_path = str(path.relative_to(root_dir) if root_dir in path.parents else path)
+        current_theme: Optional[str] = None
+        brace_depth = 0
+        for line_no, line in enumerate(lines, start=1):
+            if "{" in line and current_theme is None:
+                sel = line.split("{", 1)[0]
+                t = _classify_selector(sel)
+                if t:
+                    current_theme = t
+                    brace_depth = line.count("{") - line.count("}")
+                    continue
+            if current_theme is not None:
+                brace_depth += line.count("{") - line.count("}")
+                m = _VAR_DECL_RE.search(line)
+                if m:
+                    locations.setdefault((current_theme, m.group(1).strip()), (rel_path, line_no))
+                if brace_depth <= 0:
+                    current_theme = None
+                    brace_depth = 0
+
+    for theme_name, theme_tokens in themes.items():
+        color_groups: Dict[Tuple[int, int, int, float], List[str]] = {}
+        for var_name in theme_tokens:
+            resolved = resolve_token_value(var_name, theme_tokens, default_tokens)
+            if not resolved:
+                continue
+            rgba = parse_color(resolved)
+            if rgba is None:
+                continue
+            canonical = (rgba[0], rgba[1], rgba[2], round(rgba[3], 4))
+            color_groups.setdefault(canonical, []).append(var_name)
+
+        for canonical, var_names in color_groups.items():
+            if len(var_names) < 2:
+                continue
+            primary_var = var_names[0]
+            for dup_var in var_names[1:]:
+                loc = locations.get((theme_name, dup_var))
+                if not loc:
+                    continue
+                rel_path, line_no = loc
+                duplicates_by_file.setdefault(rel_path, []).append({
+                    "line_no": line_no,
+                    "rule": "duplicate-color-token",
+                    "matched": f"{dup_var} == {primary_var}",
+                    "message": (
+                        f"Token `{dup_var}` in `{theme_name}` duplicates the exact color of "
+                        f"`{primary_var}` ({theme_tokens[dup_var]})."
+                    ),
+                })
+
+    return duplicates_by_file
