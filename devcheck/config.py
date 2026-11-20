@@ -116,6 +116,8 @@ def load_config(root_dir: Optional[Path] = None) -> Dict[str, Any]:
     if custom_toml.exists():
         try:
             data = tomllib.loads(custom_toml.read_text(encoding="utf-8"))
+            if "checklist" in data and isinstance(data["checklist"], dict):
+                _merge_config(config, data["checklist"])
             _merge_config(config, data)
             return config
         except Exception as e:
